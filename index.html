@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#A7F3D0">
+<title>Refugee Wellbeing Hub 🕊️</title>
+<link rel="manifest" id="pwa-manifest">
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  :root {
+    --bg: #E0F2FE;
+    --bg2: #FFFFFF;
+    --bg3: #F0F9FF;
+    --text: #1E293B;
+    --text2: #475569;
+    --text3: #94A3B8;
+    --btn: #A7F3D0;
+    --btn-text: #1E293B;
+    --accent: #0EA5E9;
+    --accent2: #6EE7B7;
+    --error: #FECACA;
+    --error-text: #7F1D1D;
+    --border: #BAE6FD;
+    --card: #FFFFFF;
+    --sidebar: #BAE6FD;
+    --success: #D1FAE5;
+    --success-text: #065F46;
+    --warn: #FEF3C7;
+    --warn-text: #92400E;
+    --online: #22C55E;
+    --offline: #94A3B8;
+    --shadow: 0 2px 12px rgba(14,165,233,.10);
+    --radius: 14px;
+    --radius-sm: 8px;
+    --font: 'Segoe UI', 'Noto Sans Arabic', system-ui, sans-serif;
+  }
+  [data-dark="true"] {
+    --bg: #0F172A;
+    --bg2: #1E293B;
+    --bg3: #162032;
+    --text: #E2E8F0;
+    --text2: #94A3B8;
+    --text3: #475569;
+    --btn: #065F46;
+    --btn-text: #A7F3D0;
+    --border: #1E3A5F;
+    --card: #1E293B;
+    --sidebar: #0B1829;
+    --error: #450A0A;
+    --error-text: #FECACA;
+    --success: #022C22;
+    --success-text: #6EE7B7;
+    --warn: #312107;
+    --warn-text: #FDE68A;
+    --shadow: 0 2px 12px rgba(0,0,0,.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); transition: background .2s, color .2s; }
+  button { cursor: pointer; font-family: var(--font); }
+  input, textarea, select { font-family: var(--font); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Layout ── */
+  #app { display: flex; height: 100vh; overflow: hidden; }
+  #sidebar {
+    width: 260px; min-width: 260px; background: var(--sidebar);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    padding: 1.2rem 1rem; overflow-y: auto; transition: transform .25s;
+    z-index: 100;
+  }
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #topbar {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: .7rem 1.2rem; display: flex; align-items: center; gap: .5rem;
+    flex-wrap: wrap;
+  }
+  #content { flex: 1; overflow-y: auto; padding: 1.5rem; }
+  #hamburger { display: none; background: none; border: none; font-size: 22px; color: var(--text); }
+
+  /* ── Sidebar ── */
+  .sb-logo { font-size: 1.3rem; font-weight: 700; color: var(--text); margin-bottom: .5rem; }
+  .sb-user { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+  .sb-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; background: var(--accent2); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #065F46; font-size: 1rem; overflow: hidden; flex-shrink: 0; }
+  .sb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .sb-name { font-weight: 600; font-size: .9rem; color: var(--text); }
+  .sb-sub { font-size: .75rem; color: var(--text2); }
+  .sb-section { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); margin: 1rem 0 .4rem; }
+  .sb-link { display: flex; align-items: center; gap: .5rem; padding: .5rem .7rem; border-radius: var(--radius-sm); color: var(--text); font-size: .9rem; font-weight: 500; background: none; border: none; width: 100%; text-align: left; transition: background .15s; cursor: pointer; }
+  .sb-link:hover, .sb-link.active { background: rgba(14,165,233,.13); color: var(--accent); }
+  .sb-link .icon { font-size: 1.05rem; width: 22px; text-align: center; }
+  .sb-resources { font-size: .8rem; color: var(--text2); line-height: 1.7; padding: .5rem 0; }
+  .sb-bottom { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); }
+  .lang-select { width: 100%; padding: .4rem .6rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg2); color: var(--text); font-size: .85rem; margin-bottom: .5rem; }
+  .dark-toggle { display: flex; align-items: center; gap: .5rem; font-size: .85rem; color: var(--text2); margin-bottom: .5rem; cursor: pointer; }
+  .dark-toggle input { width: 36px; height: 20px; }
+
+  /* ── Tabs ── */
+  .tab-bar { display: flex; gap: .3rem; flex-wrap: wrap; }
+  .tab-btn {
+    padding: .45rem .9rem; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--text2); font-size: .85rem; font-weight: 600;
+    cursor: pointer; transition: all .15s; white-space: nowrap;
+  }
+  .tab-btn.active { background: var(--btn); color: var(--btn-text); border-color: var(--btn); }
+  .tab-btn:hover:not(.active) { background: var(--bg3); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Cards ── */
+  .card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.2rem 1.4rem; margin-bottom: 1rem; box-shadow: var(--shadow); }
+  .card-sm { background: var(--card); border-radius: var(--radius-sm); border: 1px solid var(--border); padding: .9rem 1rem; margin-bottom: .7rem; }
+  .section-title { font-size: 1.35rem; font-weight: 700; color: var(--text); margin-bottom: .3rem; }
+  .section-sub { color: var(--text2); font-size: .9rem; margin-bottom: 1.2rem; }
+
+  /* ── Disclaimer ── */
+  .disclaimer {
+    background: var(--error); color: var(--error-text); border-radius: var(--radius-sm);
+    padding: .6rem 1rem; font-size: .82rem; line-height: 1.5; margin: .8rem 0;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    background: var(--btn); color: var(--btn-text); border: none;
+    border-radius: var(--radius-sm); padding: .55rem 1.2rem; font-size: .9rem;
+    font-weight: 600; cursor: pointer; transition: transform .15s, box-shadow .15s;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(167,243,208,.4); }
+  .btn:active { transform: scale(.98); }
+  .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text2); }
+  .btn-outline:hover { background: var(--bg3); box-shadow: none; }
+  .btn-danger { background: var(--error); color: var(--error-text); }
+  .btn-sm { padding: .35rem .8rem; font-size: .82rem; }
+
+  /* ── Form elements ── */
+  .form-group { margin-bottom: 1rem; }
+  .form-label { display: block; font-size: .85rem; font-weight: 600; color: var(--text2); margin-bottom: .35rem; }
+  .form-input {
+    width: 100%; padding: .55rem .8rem; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border); background: var(--bg2); color: var(--text);
+    font-size: .95rem; transition: border-color .15s;
+  }
+  .form-input:focus { outline: none; border-color: var(--accent); }
+  .form-select { appearance: auto; }
+  .form-error { color: var(--error-text); font-size: .8rem; margin-top: .25rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+  .range-wrap { display: flex; align-items: center; gap: .8rem; }
+  .range-wrap input[type=range] { flex: 1; accent-color: var(--accent); }
+  .range-val { min-width: 28px; font-weight: 700; color: var(--accent); font-size: .95rem; }
+
+  /* ── Auth page ── */
+  #auth-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); padding: 2rem; }
+  .auth-box { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 2rem; width: 100%; max-width: 440px; box-shadow: var(--shadow); }
+  .auth-logo { text-align: center; font-size: 2rem; margin-bottom: .3rem; }
+  .auth-title { text-align: center; font-size: 1.4rem; font-weight: 700; margin-bottom: .2rem; }
+  .auth-sub { text-align: center; color: var(--text2); font-size: .88rem; margin-bottom: 1.5rem; }
+  .auth-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1.4rem; }
+  .auth-tab { flex: 1; padding: .6rem; border: none; background: none; font-size: .95rem; font-weight: 600; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
+  .auth-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Metrics grid ── */
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: .8rem; margin-bottom: 1.2rem; }
+  .metric-card { background: var(--bg3); border-radius: var(--radius-sm); padding: .9rem 1rem; text-align: center; border: 1px solid var(--border); }
+  .metric-val { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+  .metric-lbl { font-size: .78rem; color: var(--text2); margin-top: .15rem; }
+
+  /* ── Chat ── */
+  .chat-messages { height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: .5rem; padding: .5rem; background: var(--bg3); border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: .8rem; }
+  .chat-msg { display: flex; gap: .5rem; align-items: flex-end; }
+  .chat-msg.me { flex-direction: row-reverse; }
+  .chat-bubble { max-width: 68%; padding: .55rem .85rem; border-radius: 14px; font-size: .9rem; line-height: 1.5; }
+  .chat-bubble.them { background: var(--card); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
+  .chat-bubble.me { background: var(--btn); color: var(--btn-text); border-bottom-right-radius: 4px; }
+  .chat-input-row { display: flex; gap: .5rem; }
+  .chat-input-row input { flex: 1; }
+  .chat-time { font-size: .7rem; color: var(--text3); padding: 0 .2rem; }
+  .chat-name { font-size: .72rem; font-weight: 600; color: var(--text2); margin-bottom: .15rem; }
+
+  /* ── Peer cards ── */
+  .peer-card { display: flex; align-items: center; gap: .9rem; background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: .9rem 1.1rem; margin-bottom: .7rem; }
+  .peer-avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--bg3); object-fit: cover; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; overflow: hidden; flex-shrink: 0; border: 2px solid var(--border); }
+  .peer-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .peer-info { flex: 1; }
+  .peer-name { font-weight: 700; font-size: .95rem; display: flex; align-items: center; gap: .4rem; }
+  .peer-sub { font-size: .8rem; color: var(--text2); margin-top: .1rem; }
+  .online-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--online); display: inline-block; }
+  .offline-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--offline); display: inline-block; }
+
+  /* ── Map ── */
+  #hotel-map { height: 420px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 1rem; overflow: hidden; }
+
+  /* ── PTSD quiz ── */
+  .quiz-q { margin-bottom: 1.1rem; }
+  .quiz-q .qlabel { font-weight: 600; margin-bottom: .4rem; font-size: .93rem; }
+  .quiz-scale { display: flex; gap: .35rem; flex-wrap: wrap; }
+  .quiz-scale label { display: flex; flex-direction: column; align-items: center; gap: .15rem; cursor: pointer; }
+  .quiz-scale input[type=radio] { width: 18px; height: 18px; accent-color: var(--accent); }
+  .quiz-scale span { font-size: .72rem; color: var(--text2); }
+
+  /* ── Coping ── */
+  .coping-tabs { display: flex; gap: .4rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .coping-tab { padding: .4rem .9rem; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text2); font-size: .84rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .coping-tab.active { background: var(--btn); color: var(--btn-text); border-color: var(--btn); }
+  .coping-panel { display: none; }
+  .coping-panel.active { display: block; }
+  #breathing-circle { width: 140px; height: 140px; border-radius: 50%; background: var(--btn); display: flex; align-items: center; justify-content: center; margin: 1.2rem auto; font-size: 1rem; font-weight: 700; color: var(--btn-text); transition: transform 1s ease-in-out; cursor: default; border: 3px solid var(--accent2); }
+  .grounding-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: .7rem; margin-top: .7rem; }
+
+  /* ── Translator ── */
+  .lang-pair { display: grid; grid-template-columns: 1fr auto 1fr; gap: .7rem; align-items: end; margin-bottom: 1rem; }
+  .swap-btn { background: var(--bg3); border: 1px solid var(--border); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.1rem; transition: background .15s; align-self: center; }
+  .swap-btn:hover { background: var(--btn); }
+  audio { width: 100%; margin-top: .5rem; border-radius: var(--radius-sm); }
+
+  /* ── Spinner ── */
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2.5px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-row { display: flex; align-items: center; gap: .6rem; color: var(--text2); font-size: .9rem; padding: .5rem 0; }
+
+  /* ── Saha chat ── */
+  .saha-chat { height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: .6rem; padding: .8rem; background: var(--bg3); border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: .8rem; }
+  .saha-msg { display: flex; gap: .6rem; align-items: flex-start; max-width: 85%; }
+  .saha-msg.user { flex-direction: row-reverse; align-self: flex-end; }
+  .saha-bubble { padding: .6rem .9rem; border-radius: 14px; font-size: .9rem; line-height: 1.6; }
+  .saha-bubble.bot { background: var(--card); border: 1px solid var(--border); color: var(--text); border-top-left-radius: 4px; }
+  .saha-bubble.user { background: var(--btn); color: var(--btn-text); border-top-right-radius: 4px; }
+  .saha-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--accent2); display: flex; align-items: center; justify-content: center; font-size: .9rem; flex-shrink: 0; border: 1px solid var(--border); }
+
+  /* ── Config modal ── */
+  #config-modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 999; }
+  #config-modal.hidden { display: none; }
+  .modal-box { background: var(--card); border-radius: var(--radius); padding: 2rem; width: 100%; max-width: 520px; border: 1px solid var(--border); max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-size: 1.2rem; font-weight: 700; margin-bottom: .3rem; }
+  .modal-sub { color: var(--text2); font-size: .87rem; margin-bottom: 1.3rem; }
+
+  /* ── RTL ── */
+  [dir="rtl"] .sb-link, [dir="rtl"] .chat-msg.me { flex-direction: row-reverse; }
+  [dir="rtl"] .chat-msg.me .chat-bubble { border-bottom-right-radius: 14px; border-bottom-left-radius: 4px; }
+  [dir="rtl"] .peer-card { flex-direction: row-reverse; }
+  [dir="rtl"] .saha-msg.user { flex-direction: row; align-self: flex-start; }
+  [dir="rtl"] input, [dir="rtl"] textarea { direction: rtl; }
+
+  /* ── Progress bar ── */
+  .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: .4rem; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s; }
+
+  /* ── Badge ── */
+  .badge { display: inline-block; padding: .2rem .55rem; border-radius: 20px; font-size: .75rem; font-weight: 700; }
+  .badge-green { background: var(--success); color: var(--success-text); }
+  .badge-warn { background: var(--warn); color: var(--warn-text); }
+  .badge-err { background: var(--error); color: var(--error-text); }
+
+  /* ── Alert ── */
+  .alert { border-radius: var(--radius-sm); padding: .7rem 1rem; font-size: .88rem; margin-bottom: .8rem; line-height: 1.5; }
+  .alert-info { background: #EFF6FF; color: #1E3A8A; border: 1px solid #BFDBFE; }
+  .alert-success { background: var(--success); color: var(--success-text); }
+  .alert-warn { background: var(--warn); color: var(--warn-text); }
+  .alert-err { background: var(--error); color: var(--error-text); }
+  [data-dark="true"] .alert-info { background: #172554; color: #93C5FD; border-color: #1E3A8A; }
+
+  /* ── Footer ── */
+  #footer { text-align: center; padding: .5rem 1rem; font-size: .75rem; color: var(--text3); border-top: 1px solid var(--border); background: var(--bg2); }
+
+  /* ── Responsive ── */
+  @media (max-width: 700px) {
+    #sidebar { position: fixed; left: 0; top: 0; height: 100%; transform: translateX(-100%); }
+    #sidebar.open { transform: translateX(0); box-shadow: 4px 0 20px rgba(0,0,0,.2); }
+    #hamburger { display: block; }
+    .form-row { grid-template-columns: 1fr; }
+    .lang-pair { grid-template-columns: 1fr; }
+    .swap-btn { display: none; }
+    #content { padding: 1rem; }
+  }
+  @media (max-width: 400px) { .tab-btn { font-size: .78rem; padding: .4rem .7rem; } }
+</style>
+</head>
+<body>
+
+<!-- CONFIG MODAL (shown first if no API keys stored) -->
+<div id="config-modal" class="hidden">
+  <div class="modal-box">
+    <div class="modal-title">⚙️ Configure API Keys</div>
+    <div class="modal-sub">Your keys are stored only in your browser's localStorage — never sent anywhere except the respective APIs.</div>
+    <div class="form-group">
+      <label class="form-label">OpenAI API Key (for Saha chat + Whisper)</label>
+      <input class="form-input" id="cfg-openai" type="password" placeholder="sk-...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Google Maps API Key (for hotel search)</label>
+      <input class="form-input" id="cfg-gmaps" type="password" placeholder="AIza...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Firebase Config JSON</label>
+      <textarea class="form-input" id="cfg-firebase" rows="5" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'></textarea>
+      <div class="form-error" id="cfg-firebase-err"></div>
+    </div>
+    <button class="btn" onclick="saveConfig()" style="width:100%">Save & Continue</button>
+    <div style="margin-top:.8rem; text-align:center;">
+      <button class="btn btn-outline btn-sm" onclick="skipConfig()">Skip (Demo Mode)</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH PAGE -->
+<div id="auth-page" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">🕊️</div>
+    <div class="auth-title">Refugee Wellbeing Hub</div>
+    <div class="auth-sub">A safe, private space — your companion on this journey.</div>
+    <div class="disclaimer">⚠️ <strong>Not a substitute for therapy.</strong> If in crisis, call a hotline. Cairo: <strong>08008880700</strong> | UNHCR: <strong>+202 2578 8000</strong></div>
+    <br>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="showAuthTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="showAuthTab('register')">Create Account</button>
+    </div>
+
+    <!-- Login -->
+    <div id="auth-login">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="login-email" type="email" placeholder="you@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="login-pwd" type="password" placeholder="••••••••">
+      </div>
+      <div id="login-err" class="form-error" style="margin-bottom:.6rem"></div>
+      <button class="btn" style="width:100%" onclick="doLogin()">Sign In</button>
+      <div id="login-loading" class="loading-row" style="display:none;justify-content:center;margin-top:.5rem"><div class="spinner"></div> Signing in…</div>
+    </div>
+
+    <!-- Register -->
+    <div id="auth-register" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input class="form-input" id="reg-name" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Age</label>
+          <input class="form-input" id="reg-age" type="number" min="13" max="120" placeholder="25">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Origin Country</label>
+          <input class="form-input" id="reg-origin" placeholder="Syria, Ukraine…">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Destination</label>
+          <input class="form-input" id="reg-target" placeholder="Germany, Egypt…">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Current City</label>
+          <input class="form-input" id="reg-city" placeholder="Cairo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <select class="form-input form-select" id="reg-gender">
+            <option>Male</option><option>Female</option><option>Other</option><option>Prefer not to say</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="reg-email" type="email" placeholder="you@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="reg-pwd" type="password" placeholder="Min 6 characters">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Profile Photo (optional)</label>
+        <input class="form-input" id="reg-pic" type="file" accept="image/*" style="padding:.3rem">
+      </div>
+      <div id="reg-err" class="form-error" style="margin-bottom:.6rem"></div>
+      <button class="btn" style="width:100%" onclick="doRegister()">Create Account</button>
+      <div id="reg-loading" class="loading-row" style="display:none;justify-content:center;margin-top:.5rem"><div class="spinner"></div> Creating account…</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div class="sb-logo">🕊️ Wellbeing Hub</div>
+    <div class="sb-user">
+      <div class="sb-avatar" id="sb-avatar-wrap"></div>
+      <div>
+        <div class="sb-name" id="sb-name">Friend</div>
+        <div class="sb-sub" id="sb-sub">Welcome</div>
+      </div>
+    </div>
+
+    <div class="sb-section">Navigation</div>
+    <button class="sb-link active" data-tab="home" onclick="navTo('home',this)"><span class="icon">🏠</span> Home</button>
+    <button class="sb-link" data-tab="profile" onclick="navTo('profile',this)"><span class="icon">👤</span> Profile</button>
+    <button class="sb-link" data-tab="mental" onclick="navTo('mental',this)"><span class="icon">🧠</span> Mental Guide</button>
+    <button class="sb-link" data-tab="chat" onclick="navTo('chat',this)"><span class="icon">💬</span> Peer Chat</button>
+    <button class="sb-link" data-tab="translator" onclick="navTo('translator',this)"><span class="icon">🎤</span> Translator</button>
+    <button class="sb-link" data-tab="hotels" onclick="navTo('hotels',this)"><span class="icon">🗺️</span> Hotels</button>
+
+    <div class="sb-section">Resources</div>
+    <div class="sb-resources">
+      📞 Cairo: <strong>08008880700</strong><br>
+      🌍 UNHCR: <strong>+202 2578 8000</strong><br>
+      💻 <a href="https://www.befrienders.org" target="_blank">befrienders.org</a><br>
+      💻 <a href="https://help.unhcr.org" target="_blank">help.unhcr.org</a>
+    </div>
+
+    <div class="sb-bottom">
+      <select class="lang-select" id="lang-select" onchange="setLang(this.value)">
+        <option value="en">🌐 English</option>
+        <option value="ar">🌐 العربية</option>
+        <option value="uk">🌐 Українська</option>
+        <option value="fr">🌐 Français</option>
+      </select>
+      <label class="dark-toggle">
+        <input type="checkbox" id="dark-toggle" onchange="toggleDark(this.checked)"> 🌙 Dark Mode
+      </label>
+      <button class="btn btn-outline btn-sm" style="width:100%;margin-bottom:.4rem" onclick="openConfig()">⚙️ API Keys</button>
+      <button class="btn btn-danger btn-sm" style="width:100%" onclick="doLogout()">🚪 Logout</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+    <div id="topbar">
+      <button id="hamburger" onclick="toggleSidebar()">☰</button>
+      <div class="tab-bar" id="tab-bar">
+        <button class="tab-btn active" data-tab="home" onclick="navTo('home',this)">🏠 Home</button>
+        <button class="tab-btn" data-tab="profile" onclick="navTo('profile',this)">👤 Profile</button>
+        <button class="tab-btn" data-tab="mental" onclick="navTo('mental',this)">🧠 Mental Guide</button>
+        <button class="tab-btn" data-tab="chat" onclick="navTo('chat',this)">💬 Peer Chat</button>
+        <button class="tab-btn" data-tab="translator" onclick="navTo('translator',this)">🎤 Translator</button>
+        <button class="tab-btn" data-tab="hotels" onclick="navTo('hotels',this)">🗺️ Hotels</button>
+      </div>
+    </div>
+
+    <div id="content">
+
+      <!-- ══ HOME TAB ══ -->
+      <div id="tab-home" class="tab-panel active">
+        <div class="section-title">Welcome back 🕊️</div>
+        <div class="section-sub" id="home-sub">Your private, safe space.</div>
+        <div class="disclaimer">⚠️ <strong>Not therapy.</strong> In crisis? Call <strong>08008880700</strong> (Cairo) or <strong>+202 2578 8000</strong> (UNHCR)</div>
+        <div class="metrics-grid" id="home-metrics">
+          <div class="metric-card"><div class="metric-val" id="m-logs">0</div><div class="metric-lbl">Mood Logs</div></div>
+          <div class="metric-card"><div class="metric-val" id="m-anx">—</div><div class="metric-lbl">Avg Anxiety (30d)</div></div>
+          <div class="metric-card"><div class="metric-val" id="m-sleep">—</div><div class="metric-lbl">Avg Sleep (30d)</div></div>
+          <div class="metric-card"><div class="metric-val" id="m-streak">0</div><div class="metric-lbl">Day Streak 🔥</div></div>
+        </div>
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:.8rem">📈 Mood Trends (30 days)</div>
+          <canvas id="home-chart" height="80"></canvas>
+          <div id="home-chart-empty" style="text-align:center;color:var(--text3);padding:2rem;display:none">Log your first mood to see trends here.</div>
+        </div>
+        <div style="text-align:right">
+          <button class="btn btn-outline btn-sm" onclick="exportMoodCSV()">📥 Export CSV</button>
+        </div>
+      </div>
+
+      <!-- ══ PROFILE TAB ══ -->
+      <div id="tab-profile" class="tab-panel">
+        <div class="section-title">👤 Your Profile</div>
+        <div class="section-sub">Your information is private and only visible to you.</div>
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem">
+            <div class="sb-avatar" id="profile-avatar" style="width:72px;height:72px;font-size:1.6rem"></div>
+            <div>
+              <div style="font-size:1.1rem;font-weight:700" id="profile-name-display">Friend</div>
+              <div style="font-size:.85rem;color:var(--text2)" id="profile-city-display"></div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input class="form-input" id="p-name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Age</label>
+              <input class="form-input" id="p-age" type="number" min="13">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Origin Country</label>
+              <input class="form-input" id="p-origin">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Destination Country</label>
+              <input class="form-input" id="p-target">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Current City</label>
+              <input class="form-input" id="p-city">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Gender</label>
+              <select class="form-input form-select" id="p-gender">
+                <option>Male</option><option>Female</option><option>Other</option><option>Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Update Profile Photo</label>
+            <input class="form-input" id="p-pic" type="file" accept="image/*" style="padding:.3rem">
+          </div>
+          <div id="profile-msg" class="alert alert-success" style="display:none"></div>
+          <button class="btn" onclick="saveProfile()">💾 Save Profile</button>
+        </div>
+      </div>
+
+      <!-- ══ MENTAL GUIDE TAB ══ -->
+      <div id="tab-mental" class="tab-panel">
+        <div class="section-title">🧠 Mental Guide</div>
+        <div class="section-sub">Your personal wellness companion — not a therapist.</div>
+        <div class="disclaimer">⚠️ If you are in crisis, please call a hotline immediately. <strong>08008880700</strong> (Cairo) | <strong>+202 2578 8000</strong> (UNHCR)</div>
+        <br>
+        <div class="coping-tabs">
+          <button class="coping-tab active" onclick="showCopingTab('mood',this)">📊 Mood Tracker</button>
+          <button class="coping-tab" onclick="showCopingTab('ptsd',this)">📋 PTSD Check-in</button>
+          <button class="coping-tab" onclick="showCopingTab('saha',this)">🤝 Saha Chat</button>
+          <button class="coping-tab" onclick="showCopingTab('coping',this)">🌿 Coping Tools</button>
+        </div>
+
+        <!-- Mood Tracker -->
+        <div id="coping-mood" class="coping-panel active">
+          <div class="card">
+            <div style="font-weight:700;margin-bottom:.9rem">📊 Log Today's Mood</div>
+            <div class="form-group">
+              <label class="form-label">Anxiety Level (1 = calm, 10 = severe)</label>
+              <div class="range-wrap">
+                <input type="range" min="1" max="10" value="5" id="mood-anx" oninput="document.getElementById('anx-val').textContent=this.value">
+                <span class="range-val" id="anx-val">5</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sleep Quality (1 = poor, 10 = excellent)</label>
+              <div class="range-wrap">
+                <input type="range" min="1" max="10" value="5" id="mood-sleep" oninput="document.getElementById('sleep-val').textContent=this.value">
+                <span class="range-val" id="sleep-val">5</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Optional Note (private)</label>
+              <textarea class="form-input" id="mood-note" rows="2" maxlength="300" placeholder="How are you feeling today?"></textarea>
+            </div>
+            <div id="mood-msg" class="alert alert-success" style="display:none"></div>
+            <button class="btn" onclick="logMood()">🌱 Log Today</button>
+          </div>
+          <div class="card" id="mood-history-card">
+            <div style="font-weight:700;margin-bottom:.8rem">📅 Mood History</div>
+            <canvas id="mood-chart" height="90"></canvas>
+            <div id="mood-empty" style="text-align:center;color:var(--text3);padding:2rem;display:none">No mood logs yet. Start tracking above!</div>
+          </div>
+        </div>
+
+        <!-- PTSD Check-in -->
+        <div id="coping-ptsd" class="coping-panel">
+          <div class="card">
+            <div style="font-weight:700;margin-bottom:.4rem">📋 PCL-5 Lite Check-in</div>
+            <div class="alert alert-info" style="margin-bottom:1rem">5 quick questions to help you understand yourself. <strong>Not a clinical diagnosis.</strong></div>
+            <div id="ptsd-questions"></div>
+            <div id="ptsd-result" style="display:none"></div>
+            <button class="btn" onclick="scorePTSD()">See My Results</button>
+          </div>
+        </div>
+
+        <!-- Saha Chat -->
+        <div id="coping-saha" class="coping-panel">
+          <div class="card">
+            <div style="font-weight:700;margin-bottom:.2rem">🤝 Saha — Your AI Companion</div>
+            <div style="font-size:.82rem;color:var(--text2);margin-bottom:.8rem">Warm, culturally-aware support. <em>Not a therapist.</em></div>
+            <div class="saha-chat" id="saha-messages"></div>
+            <div class="chat-input-row">
+              <input class="form-input" id="saha-input" placeholder="Talk to Saha…" onkeydown="if(event.key==='Enter')sendSaha()">
+              <button class="btn" onclick="sendSaha()">Send</button>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:.4rem">
+              <button class="btn btn-outline btn-sm" onclick="clearSaha()">🗑️ Clear History</button>
+            </div>
+            <div class="disclaimer" style="margin-top:.8rem">⚠️ Saha is not a therapist. For crisis support call <strong>08008880700</strong></div>
+          </div>
+        </div>
+
+        <!-- Coping Tools -->
+        <div id="coping-coping" class="coping-panel">
+          <div class="coping-tabs" style="margin-bottom:.8rem">
+            <button class="coping-tab active" onclick="showBreathing(this)">🌬️ 4-7-8 Breathing</button>
+            <button class="coping-tab" onclick="showGrounding(this)">🖐️ 5-4-3-2-1 Grounding</button>
+            <button class="coping-tab" onclick="showCBT(this)">💭 CBT Reframer</button>
+          </div>
+
+          <div id="tool-breathing" class="card">
+            <div style="font-weight:700;margin-bottom:.5rem">🌬️ 4-7-8 Breathing</div>
+            <div style="color:var(--text2);font-size:.9rem;margin-bottom:.8rem">Inhale 4s → Hold 7s → Exhale 8s. Repeat 4 times to calm your nervous system.</div>
+            <div id="breathing-circle">Ready</div>
+            <div style="text-align:center;font-size:.85rem;color:var(--text2);margin-bottom:.8rem" id="breath-phase">Press Start to begin</div>
+            <div class="progress-bar" style="max-width:220px;margin:0 auto .8rem"><div class="progress-fill" id="breath-prog" style="width:0%"></div></div>
+            <div style="text-align:center">
+              <button class="btn" id="breath-btn" onclick="startBreathing()">▶️ Start</button>
+            </div>
+          </div>
+
+          <div id="tool-grounding" class="card" style="display:none">
+            <div style="font-weight:700;margin-bottom:.4rem">🖐️ 5-4-3-2-1 Grounding</div>
+            <div style="color:var(--text2);font-size:.9rem;margin-bottom:1rem">Ground yourself in the present moment. Fill in what you notice.</div>
+            <div id="grounding-steps"></div>
+          </div>
+
+          <div id="tool-cbt" class="card" style="display:none">
+            <div style="font-weight:700;margin-bottom:.4rem">💭 CBT Thought Reframer</div>
+            <div style="color:var(--text2);font-size:.9rem;margin-bottom:.8rem">Identify and gently challenge negative automatic thoughts.</div>
+            <div class="form-group">
+              <label class="form-label">What thought is bothering you?</label>
+              <textarea class="form-input" id="cbt-thought" rows="3" maxlength="500" placeholder="e.g. I feel like I don't belong anywhere…"></textarea>
+            </div>
+            <button class="btn" onclick="reframeCBT()">🔄 Reframe with AI</button>
+            <div id="cbt-loading" class="loading-row" style="display:none"><div class="spinner"></div> Thinking…</div>
+            <div id="cbt-result" class="card-sm" style="display:none;margin-top:.8rem"></div>
+            <div class="disclaimer" style="margin-top:.7rem">⚠️ AI reframing is not therapy. Hotline: <strong>08008880700</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PEER CHAT TAB ══ -->
+      <div id="tab-chat" class="tab-panel">
+        <div id="peer-list-view">
+          <div class="section-title">💬 Peer Connections</div>
+          <div class="section-sub">People on a similar journey — matched by country and age.</div>
+          <div class="disclaimer">⚠️ Be kind and respectful. Report misuse. Not therapy.</div>
+          <br>
+          <div id="peer-loading" class="loading-row"><div class="spinner"></div> Finding matches…</div>
+          <div id="peer-list"></div>
+          <div id="peer-empty" style="display:none" class="alert alert-info">No matches found yet. More people join every day! 🕊️</div>
+        </div>
+
+        <div id="peer-chat-view" style="display:none">
+          <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem">
+            <button class="btn btn-outline btn-sm" onclick="backToPeerList()">← Back</button>
+            <div style="font-weight:700;font-size:1rem" id="peer-chat-title">Chat</div>
+            <div id="peer-chat-online"></div>
+          </div>
+          <div class="card" style="padding:.8rem">
+            <div class="chat-messages" id="peer-messages"></div>
+            <div class="chat-input-row">
+              <input class="form-input" id="peer-input" placeholder="Send a message…" onkeydown="if(event.key==='Enter')sendPeerMsg()">
+              <button class="btn" onclick="sendPeerMsg()">Send</button>
+            </div>
+          </div>
+          <div class="card-sm" style="margin-top:.5rem">
+            <details>
+              <summary style="cursor:pointer;font-size:.85rem;color:var(--text2)">⚙️ Options</summary>
+              <div style="margin-top:.6rem;display:flex;gap:.5rem;flex-wrap:wrap">
+                <input class="form-input" id="report-reason" placeholder="Reason for report…" style="flex:1;min-width:140px">
+                <button class="btn btn-danger btn-sm" onclick="reportUser()">🚩 Report</button>
+                <button class="btn btn-outline btn-sm" onclick="blockUser()">🚫 Block</button>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ TRANSLATOR TAB ══ -->
+      <div id="tab-translator" class="tab-panel">
+        <div class="section-title">🎤 Audio Translator</div>
+        <div class="section-sub">Break language barriers in real conversations.</div>
+
+        <div class="card">
+          <div class="lang-pair">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">From</label>
+              <select class="form-input form-select" id="tr-src">
+                <option value="en">English</option>
+                <option value="ar">Arabic العربية</option>
+                <option value="uk">Ukrainian</option>
+                <option value="fr">French</option>
+                <option value="tr">Turkish</option>
+                <option value="de">German</option>
+                <option value="es">Spanish</option>
+                <option value="fa">Persian فارسی</option>
+              </select>
+            </div>
+            <button class="swap-btn" title="Swap languages" onclick="swapLangs()">⇄</button>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">To</label>
+              <select class="form-input form-select" id="tr-tgt">
+                <option value="ar">Arabic العربية</option>
+                <option value="en">English</option>
+                <option value="uk">Ukrainian</option>
+                <option value="fr">French</option>
+                <option value="tr">Turkish</option>
+                <option value="de">German</option>
+                <option value="es">Spanish</option>
+                <option value="fa">Persian فارسی</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Upload Audio (wav/mp3/ogg/m4a)</label>
+            <input class="form-input" id="tr-audio" type="file" accept="audio/*" style="padding:.3rem" onchange="handleAudioUpload(this)">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Or type / paste text</label>
+            <textarea class="form-input" id="tr-text" rows="3" placeholder="Type text to translate…"></textarea>
+          </div>
+
+          <button class="btn" onclick="doTranslate()">🔄 Translate</button>
+          <div id="tr-loading" class="loading-row" style="display:none"><div class="spinner"></div> Translating…</div>
+
+          <div id="tr-result" style="display:none;margin-top:1rem">
+            <div class="form-group">
+              <label class="form-label">Transcription</label>
+              <div class="card-sm" id="tr-transcript" style="min-height:40px"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Translation</label>
+              <div class="card-sm" id="tr-translation" style="min-height:40px;font-size:1.05rem"></div>
+            </div>
+            <div id="tr-audio-player"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:.5rem">💬 Live Conversation Mode</div>
+          <div style="font-size:.85rem;color:var(--text2);margin-bottom:.8rem">Type in your language — get instant translation + speech for the other person.</div>
+          <div class="form-group">
+            <textarea class="form-input" id="live-input" rows="2" placeholder="Speak or type…"></textarea>
+          </div>
+          <button class="btn" onclick="doLiveTranslate()">▶️ Translate & Speak</button>
+          <div id="live-result" style="display:none;margin-top:.8rem">
+            <div class="card-sm" id="live-translation" style="font-size:1.05rem"></div>
+            <div id="live-audio"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ HOTELS TAB ══ -->
+      <div id="tab-hotels" class="tab-panel">
+        <div class="section-title">🗺️ Find Accommodation</div>
+        <div class="section-sub">Search for nearby hotels and lodging.</div>
+
+        <div class="card">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Country</label>
+              <select class="form-input form-select" id="hotel-country" onchange="updateCities()">
+                <option>Egypt</option><option>Germany</option><option>Turkey</option><option>Jordan</option>
+                <option>Lebanon</option><option>France</option><option>UK</option><option>Netherlands</option>
+                <option>Sweden</option><option>Canada</option><option>USA</option><option>Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">City</label>
+              <select class="form-input form-select" id="hotel-city"></select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Or enter city manually</label>
+            <input class="form-input" id="hotel-city-custom" placeholder="e.g. Cairo">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Price Filter</label>
+            <select class="form-input form-select" id="hotel-price">
+              <option value="999">All prices</option>
+              <option value="50">Budget (under $50/night)</option>
+              <option value="120">Mid-range (under $120/night)</option>
+            </select>
+          </div>
+          <div style="margin-bottom:.8rem">
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.88rem;color:var(--text2)">
+              <input type="checkbox" id="hotel-family"> Family-friendly only
+            </label>
+          </div>
+          <button class="btn" onclick="searchHotels()">🔍 Search Hotels</button>
+          <div id="hotel-loading" class="loading-row" style="display:none"><div class="spinner"></div> Searching…</div>
+        </div>
+
+        <div id="hotel-map" style="display:none"></div>
+        <div id="hotel-results"></div>
+        <div class="disclaimer">⚠️ Hotel listings are from Google Places. Verify details before booking.</div>
+      </div>
+
+    </div><!-- /content -->
+
+    <div id="footer">🕊️ Refugee Wellbeing Hub · Private & Secure · Not a medical service · <strong>Crisis hotline: 08008880700</strong></div>
+  </div><!-- /main -->
+</div><!-- /app -->
+
+
+
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWOMB7TflDO346F0jVxf4cVQDoLTwcD4A",
+    authDomain: "itc404web-aa1df.firebaseapp.com",
+    projectId: "itc404web-aa1df",
+    storageBucket: "itc404web-aa1df.firebasestorage.app",
+    messagingSenderId: "1094877771048",
+    appId: "1:1094877771048:web:c5ff3a4bbeb25c910e4c1d",
+    measurementId: "G-J1WGM9M2VG"
+  };
+</script>
+
+
+
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════════════════
+const STATE = {
+  user: null, uid: null, profile: {},
+  moods: [], chatHistory: [],
+  peerRoom: null, peerName: null, peerUid: null,
+  peerUnsub: null, chatUnsub: null,
+  blockedUsers: [],
+  cfg: {},
+  db: null, auth: null, storage: null, fbApp: null,
+  demoMode: false,
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CONFIG / INIT
+// ══════════════════════════════════════════════════════════════════════════════
+function loadConfig() {
+  try { STATE.cfg = JSON.parse(localStorage.getItem('rwh_cfg') || '{}'); } catch(e) { STATE.cfg = {}; }
+}
+
+function saveConfig() {
+  const openai = document.getElementById('cfg-openai').value.trim();
+  const gmaps  = document.getElementById('cfg-gmaps').value.trim();
+  const fbRaw  = document.getElementById('cfg-firebase').value.trim();
+  let fb = {};
+  if (fbRaw) {
+    try { fb = JSON.parse(fbRaw); }
+    catch(e) { document.getElementById('cfg-firebase-err').textContent = 'Invalid JSON'; return; }
+  }
+  STATE.cfg = { openai, gmaps, firebase: fb };
+  localStorage.setItem('rwh_cfg', JSON.stringify(STATE.cfg));
+  document.getElementById('cfg-firebase-err').textContent = '';
+  document.getElementById('config-modal').classList.add('hidden');
+  initFirebase();
+}
+
+function skipConfig() {
+  STATE.demoMode = true;
+  document.getElementById('config-modal').classList.add('hidden');
+  showAuthPage();
+}
+
+function openConfig() {
+  const m = document.getElementById('config-modal');
+  m.classList.remove('hidden');
+  if (STATE.cfg.openai) document.getElementById('cfg-openai').value = STATE.cfg.openai;
+  if (STATE.cfg.gmaps)  document.getElementById('cfg-gmaps').value  = STATE.cfg.gmaps;
+  if (STATE.cfg.firebase && Object.keys(STATE.cfg.firebase).length)
+    document.getElementById('cfg-firebase').value = JSON.stringify(STATE.cfg.firebase, null, 2);
+}
+
+function initFirebase() {
+  const fb = STATE.cfg.firebase;
+  if (!fb || !fb.apiKey) return;
+  try {
+    if (firebase.apps.length) firebase.app();
+    else firebase.initializeApp(fb);
+    STATE.db      = firebase.firestore();
+    STATE.auth    = firebase.auth();
+    STATE.storage = firebase.storage();
+    STATE.auth.onAuthStateChanged(user => {
+      if (user) {
+        STATE.uid = user.uid;
+        STATE.user = user;
+        loadProfileAndEnter();
+      } else {
+        showAuthPage();
+      }
+    });
+  } catch(e) {
+    console.error('Firebase init error:', e);
+    showAuthPage();
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadConfig();
+  injectPWA();
+  buildPTSDQuestions();
+  buildGrounding();
+  updateCities();
+  loadDarkMode();
+
+  const hasFB = STATE.cfg.firebase && STATE.cfg.firebase.apiKey;
+  if (hasFB) {
+    initFirebase();
+  } else {
+    document.getElementById('config-modal').classList.remove('hidden');
+  }
+});
+
+function injectPWA() {
+  const manifest = {
+    name: 'Refugee Wellbeing Hub', short_name: 'WellbeingHub',
+    start_url: '/', display: 'standalone',
+    background_color: '#E0F2FE', theme_color: '#A7F3D0',
+    icons: [{ src: 'https://img.icons8.com/fluency/192/dove.png', sizes: '192x192', type: 'image/png' }]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  document.getElementById('pwa-manifest').href = URL.createObjectURL(blob);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════════════════════════════
+function showAuthPage() {
+  document.getElementById('auth-page').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('auth-page').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+}
+
+function showAuthTab(tab) {
+  document.getElementById('auth-login').style.display    = tab==='login' ? 'block' : 'none';
+  document.getElementById('auth-register').style.display = tab==='register' ? 'block' : 'none';
+  document.querySelectorAll('.auth-tab').forEach((t,i) => {
+    t.classList.toggle('active', (i===0 && tab==='login') || (i===1 && tab==='register'));
+  });
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pwd   = document.getElementById('login-pwd').value;
+  const errEl = document.getElementById('login-err');
+  errEl.textContent = '';
+  if (!email || !pwd) { errEl.textContent = 'Email and password required.'; return; }
+  document.getElementById('login-loading').style.display = 'flex';
+  try {
+    if (STATE.demoMode || !STATE.auth) { enterDemoMode(); return; }
+    const cred = await STATE.auth.signInWithEmailAndPassword(email, pwd);
+    STATE.uid  = cred.user.uid;
+    STATE.user = cred.user;
+    await loadProfileAndEnter();
+  } catch(e) {
+    errEl.textContent = e.message || 'Login failed.';
+  } finally {
+    document.getElementById('login-loading').style.display = 'none';
+  }
+}
+
+async function doRegister() {
+  const name   = document.getElementById('reg-name').value.trim();
+  const age    = parseInt(document.getElementById('reg-age').value);
+  const origin = document.getElementById('reg-origin').value.trim();
+  const target = document.getElementById('reg-target').value.trim();
+  const city   = document.getElementById('reg-city').value.trim();
+  const gender = document.getElementById('reg-gender').value;
+  const email  = document.getElementById('reg-email').value.trim();
+  const pwd    = document.getElementById('reg-pwd').value;
+  const picFile = document.getElementById('reg-pic').files[0];
+  const errEl   = document.getElementById('reg-err');
+  errEl.textContent = '';
+  if (age < 13) { errEl.textContent = 'You must be at least 13 years old.'; return; }
+  if (!email || !pwd) { errEl.textContent = 'Email and password required.'; return; }
+  if (pwd.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  document.getElementById('reg-loading').style.display = 'flex';
+  try {
+    if (STATE.demoMode || !STATE.auth) { enterDemoMode(name, age, origin, target, city, gender); return; }
+    const cred = await STATE.auth.createUserWithEmailAndPassword(email, pwd);
+    STATE.uid  = cred.user.uid;
+    STATE.user = cred.user;
+    let picUrl = '';
+    if (picFile) picUrl = await uploadProfilePic(picFile);
+    const profile = { name, age, origin_country: origin, target_country: target,
+      city, gender, email, pic_url: picUrl,
+      created_at: new Date().toISOString(), online: true };
+    await STATE.db.collection('users').doc(STATE.uid).set(profile);
+    STATE.profile = profile;
+    enterApp();
+  } catch(e) {
+    errEl.textContent = e.message || 'Registration failed.';
+  } finally {
+    document.getElementById('reg-loading').style.display = 'none';
+  }
+}
+
+async function doLogout() {
+  if (STATE.peerUnsub) STATE.peerUnsub();
+  if (STATE.chatUnsub) STATE.chatUnsub();
+  if (STATE.auth) await STATE.auth.signOut();
+  STATE.user = null; STATE.uid = null; STATE.profile = {};
+  STATE.moods = []; STATE.chatHistory = []; STATE.peerRoom = null;
+  showAuthPage();
+}
+
+// Demo mode for no-Firebase usage
+function enterDemoMode(name='Demo User', age=25, origin='Syria', target='Germany', city='Cairo', gender='Other') {
+  STATE.demoMode = true;
+  STATE.uid = 'demo-' + Date.now();
+  STATE.profile = { name, age, origin_country: origin, target_country: target,
+    city, gender, email: 'demo@demo.com', pic_url: '', online: true };
+  const stored = localStorage.getItem('rwh_moods_demo');
+  STATE.moods = stored ? JSON.parse(stored) : [];
+  const sh = localStorage.getItem('rwh_saha_demo');
+  STATE.chatHistory = sh ? JSON.parse(sh) : [];
+  enterApp();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PROFILE
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadProfileAndEnter() {
+  if (STATE.db) {
+    const doc = await STATE.db.collection('users').doc(STATE.uid).get();
+    STATE.profile = doc.exists ? doc.data() : {};
+    const md = await STATE.db.collection('moods').doc(STATE.uid).collection('logs')
+      .orderBy('ts', 'desc').limit(30).get();
+    STATE.moods = md.docs.map(d => d.data()).filter(d => d.date);
+    const sh = await STATE.db.collection('chat_history').doc(STATE.uid).get();
+    STATE.chatHistory = sh.exists ? (sh.data().history || []) : [];
+    const bl = await STATE.db.collection('blocks').doc(STATE.uid).get();
+    STATE.blockedUsers = bl.exists ? (bl.data().blocked || []) : [];
+  }
+  enterApp();
+}
+
+function enterApp() {
+  showApp();
+  updateSidebar();
+  populateProfileForm();
+  renderHomeDashboard();
+  renderMoodChart();
+  renderSahaHistory();
+  loadPeers();
+  document.getElementById('login-loading').style.display = 'none';
+  document.getElementById('reg-loading').style.display = 'none';
+}
+
+function updateSidebar() {
+  const p = STATE.profile;
+  document.getElementById('sb-name').textContent = p.name || 'Friend';
+  document.getElementById('sb-sub').textContent = [p.city, p.target_country].filter(Boolean).join(' · ') || 'Welcome';
+  renderAvatar('sb-avatar-wrap', p);
+}
+
+function renderAvatar(elId, p) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (p && p.pic_url) {
+    el.innerHTML = `<img src="${p.pic_url}" alt="avatar">`;
+  } else {
+    const initials = (p && p.name) ? p.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() : '?';
+    el.textContent = initials;
+  }
+}
+
+function populateProfileForm() {
+  const p = STATE.profile;
+  setVal('p-name', p.name||''); setVal('p-age', p.age||25);
+  setVal('p-origin', p.origin_country||''); setVal('p-target', p.target_country||'');
+  setVal('p-city', p.city||'');
+  const gSel = document.getElementById('p-gender');
+  if (gSel && p.gender) gSel.value = p.gender;
+  document.getElementById('profile-name-display').textContent = p.name || 'Friend';
+  document.getElementById('profile-city-display').textContent = [p.city, p.target_country].filter(Boolean).join(' → ');
+  renderAvatar('profile-avatar', p);
+}
+
+async function saveProfile() {
+  const picFile = document.getElementById('p-pic').files[0];
+  let picUrl = STATE.profile.pic_url || '';
+  if (picFile) picUrl = await uploadProfilePic(picFile);
+  const updated = {
+    ...STATE.profile,
+    name: getVal('p-name'), age: parseInt(getVal('p-age'))||25,
+    origin_country: getVal('p-origin'), target_country: getVal('p-target'),
+    city: getVal('p-city'), gender: getVal('p-gender'),
+    pic_url: picUrl,
+  };
+  STATE.profile = updated;
+  if (STATE.db) await STATE.db.collection('users').doc(STATE.uid).set(updated, { merge: true });
+  else if (STATE.demoMode) localStorage.setItem('rwh_profile_demo', JSON.stringify(updated));
+  const msg = document.getElementById('profile-msg');
+  msg.textContent = '✅ Profile saved!';
+  msg.style.display = 'block';
+  setTimeout(() => { msg.style.display = 'none'; }, 2500);
+  updateSidebar();
+  populateProfileForm();
+}
+
+async function uploadProfilePic(file) {
+  if (!STATE.storage) return '';
+  try {
+    const ref = STATE.storage.ref(`avatars/${STATE.uid}`);
+    await ref.put(file);
+    return await ref.getDownloadURL();
+  } catch(e) { return ''; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HOME DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════════
+function renderHomeDashboard() {
+  const m = STATE.moods;
+  document.getElementById('m-logs').textContent = m.length;
+  if (m.length) {
+    const avgAnx  = (m.reduce((s,x)=>s+(x.anxiety||5),0)/m.length).toFixed(1);
+    const avgSlp  = (m.reduce((s,x)=>s+(x.sleep||5),0)/m.length).toFixed(1);
+    document.getElementById('m-anx').textContent   = avgAnx+'/10';
+    document.getElementById('m-sleep').textContent = avgSlp+'/10';
+  }
+  // streak
+  const dates = [...new Set(m.map(x=>x.date))].sort().reverse();
+  let streak = 0;
+  let cur = new Date(); cur.setHours(0,0,0,0);
+  for (const d of dates) {
+    const md = new Date(d);
+    const diff = Math.round((cur - md)/(1000*60*60*24));
+    if (diff <= 1) { streak++; cur = md; } else break;
+  }
+  document.getElementById('m-streak').textContent = streak;
+  document.getElementById('home-sub').textContent = `Welcome back, ${STATE.profile.name||'Friend'} 🕊️`;
+
+  // Chart
+  const sorted = [...m].sort((a,b) => a.date > b.date ? 1 : -1).slice(-14);
+  const homeChartEl = document.getElementById('home-chart');
+  const emptyEl = document.getElementById('home-chart-empty');
+  if (!sorted.length) { homeChartEl.style.display='none'; emptyEl.style.display='block'; return; }
+  homeChartEl.style.display='block'; emptyEl.style.display='none';
+  renderLineChart('home-chart', sorted.map(x=>x.date), [
+    { label: 'Anxiety', data: sorted.map(x=>x.anxiety||5), color: '#F87171' },
+    { label: 'Sleep Quality', data: sorted.map(x=>x.sleep||5), color: '#60A5FA' },
+  ]);
+}
+
+let chartInstances = {};
+function renderLineChart(id, labels, datasets) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (chartInstances[id]) { chartInstances[id].destroy(); }
+  chartInstances[id] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: datasets.map(d => ({
+        label: d.label, data: d.data, borderColor: d.color,
+        backgroundColor: d.color+'22', tension: 0.35, fill: true,
+        pointRadius: 3, pointHoverRadius: 5,
+      }))
+    },
+    options: {
+      responsive: true, plugins: { legend: { position: 'top' } },
+      scales: {
+        y: { min: 0, max: 10, grid: { color: 'rgba(148,163,184,.15)' }, ticks: { color: '#94A3B8' } },
+        x: { grid: { color: 'rgba(148,163,184,.1)' }, ticks: { color: '#94A3B8', maxTicksLimit: 8 } }
+      }
+    }
+  });
+}
+
+function exportMoodCSV() {
+  if (!STATE.moods.length) { alert('No mood data to export.'); return; }
+  const rows = ['date,anxiety,sleep,note', ...STATE.moods.map(m=>`${m.date},${m.anxiety||''},${m.sleep||''},"${(m.note||'').replace(/"/g,'""')}"`)];
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mood_logs.csv';
+  a.click();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MOOD TRACKER
+// ══════════════════════════════════════════════════════════════════════════════
+async function logMood() {
+  const anx   = parseInt(document.getElementById('mood-anx').value);
+  const sleep = parseInt(document.getElementById('mood-sleep').value);
+  const note  = document.getElementById('mood-note').value.trim();
+  const today = new Date().toISOString().split('T')[0];
+  const entry = { date: today, anxiety: anx, sleep, note, ts: new Date() };
+  if (STATE.db) {
+    await STATE.db.collection('moods').doc(STATE.uid).collection('logs').add(entry);
+    const md = await STATE.db.collection('moods').doc(STATE.uid).collection('logs')
+      .orderBy('ts','desc').limit(30).get();
+    STATE.moods = md.docs.map(d=>d.data()).filter(d=>d.date);
+  } else {
+    STATE.moods.unshift(entry);
+    if (STATE.demoMode) localStorage.setItem('rwh_moods_demo', JSON.stringify(STATE.moods.slice(0,60)));
+  }
+  const msg = document.getElementById('mood-msg');
+  msg.textContent = '✅ Mood logged for ' + today;
+  msg.style.display = 'block';
+  setTimeout(()=>{ msg.style.display='none'; }, 2500);
+  renderMoodChart();
+  renderHomeDashboard();
+}
+
+function renderMoodChart() {
+  const sorted = [...STATE.moods].sort((a,b)=>a.date>b.date?1:-1).slice(-14);
+  const emptyEl = document.getElementById('mood-empty');
+  const canvas  = document.getElementById('mood-chart');
+  if (!sorted.length) { if(canvas)canvas.style.display='none'; if(emptyEl)emptyEl.style.display='block'; return; }
+  if(canvas)canvas.style.display='block'; if(emptyEl)emptyEl.style.display='none';
+  renderLineChart('mood-chart', sorted.map(x=>x.date), [
+    { label:'Anxiety', data:sorted.map(x=>x.anxiety||5), color:'#F87171' },
+    { label:'Sleep', data:sorted.map(x=>x.sleep||5), color:'#60A5FA' },
+  ]);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PTSD CHECK-IN
+// ══════════════════════════════════════════════════════════════════════════════
+const PCL5 = [
+  'Repeated, disturbing memories or thoughts about a stressful experience?',
+  'Feeling very upset when reminded of a stressful experience?',
+  'Avoiding thoughts or feelings related to a stressful experience?',
+  'Feeling emotionally numb or unable to feel positive emotions?',
+  'Trouble sleeping or feeling jumpy / easily startled?',
+];
+function buildPTSDQuestions() {
+  const container = document.getElementById('ptsd-questions');
+  if (!container) return;
+  PCL5.forEach((q, i) => {
+    const labels = ['Not at all', 'A little', 'Moderately', 'Quite a bit', 'Extremely'];
+    container.innerHTML += `<div class="quiz-q">
+      <div class="qlabel">${i+1}. ${q}</div>
+      <div class="quiz-scale">
+        ${labels.map((l,v)=>`<label><input type="radio" name="pcl${i}" value="${v}"><span>${v} - ${l}</span></label>`).join('')}
+      </div>
+    </div>`;
+  });
+}
+
+function scorePTSD() {
+  let total = 0;
+  for (let i=0; i<5; i++) {
+    const sel = document.querySelector(`input[name="pcl${i}"]:checked`);
+    if (!sel) { alert('Please answer all 5 questions.'); return; }
+    total += parseInt(sel.value);
+  }
+  let level, badge, advice;
+  if (total <= 5) { level='Minimal'; badge='badge-green'; advice='Keep practising self-care. You\'re doing well. 💚'; }
+  else if (total <= 10) { level='Mild'; badge='badge-green'; advice='Consider talking to a counsellor or trusted person. 🟡'; }
+  else if (total <= 15) { level='Moderate'; badge='badge-warn'; advice='We encourage you to reach out to a professional support service. 🟠'; }
+  else { level='Significant'; badge='badge-err'; advice='Please contact a mental health professional or hotline now. Call <strong>08008880700</strong> 🔴'; }
+
+  const res = document.getElementById('ptsd-result');
+  res.style.display = 'block';
+  res.innerHTML = `<div class="card-sm" style="margin-top:1rem">
+    <div style="font-size:1.1rem;font-weight:700;margin-bottom:.5rem">Score: ${total}/20 — <span class="badge ${badge}">${level}</span></div>
+    <div style="font-size:.93rem;line-height:1.6">${advice}</div>
+    <div class="disclaimer" style="margin-top:.6rem">⚠️ This is not a clinical diagnosis. Please seek professional support if needed.</div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SAHA AI CHAT
+// ══════════════════════════════════════════════════════════════════════════════
+const SAHA_SYSTEM = `You are Saha (صحة), a warm, culturally-sensitive AI companion for refugees and displaced people.
+Speak in the user's language. NEVER patronise. NEVER give medical diagnoses.
+Validate emotions deeply. Gently encourage professional help when needed.
+You understand PTSD, grief, displacement trauma, cultural shock.
+Use short, caring responses. Ask one thoughtful question at a time.
+Always end with: ⚠️ I'm not a therapist. For crisis help, call your local hotline.`;
+
+function renderSahaHistory() {
+  const container = document.getElementById('saha-messages');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!STATE.chatHistory.length) {
+    container.innerHTML = `<div style="text-align:center;color:var(--text3);padding:2rem;font-size:.9rem">
+      👋 Hi, I'm Saha. I'm here to listen. How are you feeling today?</div>`;
+    return;
+  }
+  STATE.chatHistory.slice(-20).forEach(m => {
+    appendSahaMsg(m.role, m.content, false);
+  });
+  container.scrollTop = container.scrollHeight;
+}
+
+function appendSahaMsg(role, content, scroll=true) {
+  const container = document.getElementById('saha-messages');
+  if (!container) return;
+  const isBot = role === 'assistant';
+  const div = document.createElement('div');
+  div.className = `saha-msg ${isBot ? '' : 'user'}`;
+  div.innerHTML = `
+    ${isBot ? `<div class="saha-icon">🕊️</div>` : ''}
+    <div class="saha-bubble ${isBot ? 'bot' : 'user'}">${escapeHtml(content).replace(/\n/g,'<br>')}</div>
+    ${!isBot ? `<div class="saha-icon" style="background:var(--btn)">👤</div>` : ''}
+  `;
+  container.appendChild(div);
+  if (scroll) container.scrollTop = container.scrollHeight;
+}
+
+async function sendSaha() {
+  const input = document.getElementById('saha-input');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  // Remove placeholder
+  const container = document.getElementById('saha-messages');
+  const ph = container.querySelector('div[style*="padding:2rem"]');
+  if (ph) ph.remove();
+
+  STATE.chatHistory.push({ role: 'user', content: text });
+  appendSahaMsg('user', text);
+
+  // Loading indicator
+  const loadDiv = document.createElement('div');
+  loadDiv.className = 'saha-msg';
+  loadDiv.id = 'saha-loading-msg';
+  loadDiv.innerHTML = `<div class="saha-icon">🕊️</div><div class="saha-bubble bot"><div class="spinner"></div></div>`;
+  container.appendChild(loadDiv);
+  container.scrollTop = container.scrollHeight;
+
+  const reply = await callSaha();
+  document.getElementById('saha-loading-msg')?.remove();
+  STATE.chatHistory.push({ role: 'assistant', content: reply });
+  appendSahaMsg('assistant', reply);
+  saveSahaHistory();
+}
+
+async function callSaha() {
+  const key = STATE.cfg.openai;
+  if (!key) return '🤗 Saha is in demo mode — please add your OpenAI API key in ⚙️ Settings to enable AI responses.';
+  try {
+    const msgs = [{ role:'system', content: SAHA_SYSTEM }];
+    STATE.chatHistory.slice(-12).forEach(m => msgs.push({ role: m.role, content: m.content }));
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${key}` },
+      body: JSON.stringify({ model:'gpt-4o-mini', messages: msgs, max_tokens:400, temperature:.75 })
+    });
+    const data = await res.json();
+    if (data.error) return `⚠️ ${data.error.message}`;
+    return data.choices[0].message.content;
+  } catch(e) { return `⚠️ Network error: ${e.message}`; }
+}
+
+async function saveSahaHistory() {
+  if (STATE.db) {
+    await STATE.db.collection('chat_history').doc(STATE.uid).set({ history: STATE.chatHistory.slice(-40) });
+  } else if (STATE.demoMode) {
+    localStorage.setItem('rwh_saha_demo', JSON.stringify(STATE.chatHistory.slice(-40)));
+  }
+}
+
+function clearSaha() {
+  STATE.chatHistory = [];
+  saveSahaHistory();
+  renderSahaHistory();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COPING TOOLS
+// ══════════════════════════════════════════════════════════════════════════════
+function showBreathing(btn) {
+  setCopingTool(btn, 'tool-breathing');
+}
+function showGrounding(btn) {
+  setCopingTool(btn, 'tool-grounding');
+}
+function showCBT(btn) {
+  setCopingTool(btn, 'tool-cbt');
+}
+function setCopingTool(btn, id) {
+  document.querySelectorAll('#coping-coping .coping-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['tool-breathing','tool-grounding','tool-cbt'].forEach(t=>{
+    document.getElementById(t).style.display = t===id ? 'block' : 'none';
+  });
+}
+
+// 4-7-8 Breathing
+let breathInterval = null;
+function startBreathing() {
+  if (breathInterval) { clearInterval(breathInterval); breathInterval = null; }
+  const circle = document.getElementById('breathing-circle');
+  const phase  = document.getElementById('breath-phase');
+  const prog   = document.getElementById('breath-prog');
+  const btn    = document.getElementById('breath-btn');
+  btn.textContent = '⏹ Stop';
+  btn.onclick = stopBreathing;
+
+  const phases = [
+    { name:'Inhale…', dur:4, scale:'1.25' },
+    { name:'Hold…',   dur:7, scale:'1.25' },
+    { name:'Exhale…', dur:8, scale:'1.0'  },
+  ];
+  let pi=0, elapsed=0, total=4+7+8;
+
+  breathInterval = setInterval(() => {
+    const p = phases[pi];
+    elapsed++;
+    const pElapsed = elapsed - phases.slice(0,pi).reduce((s,x)=>s+x.dur,0);
+    prog.style.width = (elapsed/total*100)+'%';
+    circle.textContent = p.name + ' ' + (p.dur - pElapsed + 1) + 's';
+    circle.style.transform = `scale(${p.scale})`;
+    phase.textContent = p.name;
+    if (pElapsed >= p.dur) { pi=(pi+1)%3; if(pi===0){elapsed=0;} }
+  }, 1000);
+}
+function stopBreathing() {
+  if(breathInterval){ clearInterval(breathInterval); breathInterval=null; }
+  const circle=document.getElementById('breathing-circle');
+  const phase=document.getElementById('breath-phase');
+  const prog=document.getElementById('breath-prog');
+  const btn=document.getElementById('breath-btn');
+  circle.textContent='Ready'; circle.style.transform='scale(1)';
+  phase.textContent='Press Start to begin'; prog.style.width='0%';
+  btn.textContent='▶️ Start'; btn.onclick=startBreathing;
+}
+
+// 5-4-3-2-1 Grounding
+function buildGrounding() {
+  const steps = [
+    { emoji:'👁️', n:5, sense:'things you can SEE' },
+    { emoji:'✋', n:4, sense:'things you can TOUCH' },
+    { emoji:'👂', n:3, sense:'things you can HEAR' },
+    { emoji:'👃', n:2, sense:'things you can SMELL' },
+    { emoji:'👅', n:1, sense:'thing you can TASTE' },
+  ];
+  const el = document.getElementById('grounding-steps');
+  if (!el) return;
+  el.innerHTML = steps.map((s,si)=>`
+    <div class="card-sm">
+      <div style="font-weight:700;margin-bottom:.5rem">${s.emoji} ${s.n} ${s.sense}</div>
+      <div class="grounding-grid">
+        ${Array.from({length:s.n},(_,j)=>`<input class="form-input" placeholder="#${j+1}" style="font-size:.85rem;padding:.4rem .6rem">`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+// CBT Reframer
+async function reframeCBT() {
+  const thought = document.getElementById('cbt-thought').value.trim();
+  if (!thought) return;
+  const key = STATE.cfg.openai;
+  const loading = document.getElementById('cbt-loading');
+  const result  = document.getElementById('cbt-result');
+  loading.style.display = 'flex';
+  result.style.display  = 'none';
+  if (!key) {
+    loading.style.display='none';
+    result.style.display='block';
+    result.innerHTML='🔑 Please add your OpenAI API key in ⚙️ Settings to use the AI reframer.';
+    return;
+  }
+  try {
+    const lang = document.getElementById('lang-select').value;
+    const langNames = { en:'English', ar:'Arabic', uk:'Ukrainian', fr:'French' };
+    const prompt = `You are a compassionate CBT therapist. A refugee writes: "${thought}".
+Gently identify any cognitive distortions and offer a balanced, compassionate reframe.
+Keep it short and warm. End with a grounding affirmation. Respond in ${langNames[lang]||'English'}.`;
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+      body: JSON.stringify({ model:'gpt-4o-mini', messages:[{role:'user',content:prompt}], max_tokens:350 })
+    });
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content || data.error?.message || 'Error';
+    result.innerHTML = escapeHtml(text).replace(/\n/g,'<br>');
+    result.style.display='block';
+  } catch(e) {
+    result.innerHTML='⚠️ '+escapeHtml(e.message);
+    result.style.display='block';
+  } finally { loading.style.display='none'; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PEER CHAT
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadPeers() {
+  const listEl  = document.getElementById('peer-list');
+  const loadEl  = document.getElementById('peer-loading');
+  const emptyEl = document.getElementById('peer-empty');
+  if (!listEl) return;
+  listEl.innerHTML = ''; loadEl.style.display='flex'; emptyEl.style.display='none';
+
+  if (!STATE.db || STATE.demoMode) {
+    loadEl.style.display='none';
+    // Demo peers
+    const demos = [
+      { uid:'peer1', name:'Ahmed Al-Hassan', age:28, origin_country:'Syria', target_country:'Germany', gender:'Male', online:true, pic_url:'' },
+      { uid:'peer2', name:'Olena Kovalenko', age:32, origin_country:'Ukraine', target_country:'Netherlands', gender:'Female', online:false, pic_url:'' },
+      { uid:'peer3', name:'Fatima Zahra', age:24, origin_country:'Morocco', target_country:'France', gender:'Female', online:true, pic_url:'' },
+    ];
+    renderPeerList(demos);
+    return;
+  }
+  try {
+    const snapshot = await STATE.db.collection('users').get();
+    const p = STATE.profile;
+    const matches = [];
+    snapshot.forEach(doc => {
+      if (doc.id === STATE.uid) return;
+      const d = doc.data();
+      if (STATE.blockedUsers.includes(doc.id)) return;
+      const ageOk = Math.abs((d.age||0) - (p.age||0)) <= 5;
+      const countryMatch = d.origin_country === p.origin_country || d.target_country === p.target_country;
+      if (ageOk && countryMatch) matches.push({ uid: doc.id, ...d });
+    });
+    loadEl.style.display='none';
+    if (!matches.length) emptyEl.style.display='block';
+    else renderPeerList(matches);
+  } catch(e) {
+    loadEl.style.display='none';
+    listEl.innerHTML = `<div class="alert alert-err">Error loading peers: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderPeerList(peers) {
+  const listEl = document.getElementById('peer-list');
+  listEl.innerHTML = peers.map(peer => {
+    const initials = peer.name ? peer.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() : '?';
+    const avatarHtml = peer.pic_url
+      ? `<img src="${peer.pic_url}" alt="avatar">`
+      : initials;
+    const dotClass = peer.online ? 'online-dot' : 'offline-dot';
+    return `<div class="peer-card">
+      <div class="peer-avatar">${avatarHtml}</div>
+      <div class="peer-info">
+        <div class="peer-name"><span class="${dotClass}"></span> ${escapeHtml(peer.name||'Anonymous')}</div>
+        <div class="peer-sub">Age ${peer.age||'?'} · ${escapeHtml(peer.origin_country||'?')} → ${escapeHtml(peer.target_country||'?')} · ${escapeHtml(peer.gender||'')}</div>
+      </div>
+      <button class="btn btn-sm" onclick="openPeerChat('${peer.uid}','${escapeHtml(peer.name||'Friend').replace(/'/g,"\\'")}')">💬 Chat</button>
+    </div>`;
+  }).join('');
+}
+
+async function openPeerChat(peerUid, peerName) {
+  STATE.peerUid  = peerUid;
+  STATE.peerName = peerName;
+  const ids = [STATE.uid, peerUid].sort();
+  STATE.peerRoom = ids[0] + '_' + ids[1];
+
+  document.getElementById('peer-list-view').style.display = 'none';
+  document.getElementById('peer-chat-view').style.display = 'block';
+  document.getElementById('peer-chat-title').textContent = '💬 ' + peerName;
+
+  if (STATE.db) {
+    // Create room
+    await STATE.db.collection('rooms').doc(STATE.peerRoom).set(
+      { members:[STATE.uid,peerUid], created: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true }
+    );
+    // Realtime listener
+    if (STATE.peerUnsub) STATE.peerUnsub();
+    STATE.peerUnsub = STATE.db.collection('rooms').doc(STATE.peerRoom)
+      .collection('messages').orderBy('ts').limit(100)
+      .onSnapshot(snap => {
+        const msgs = snap.docs.map(d=>d.data());
+        renderPeerMessages(msgs);
+      });
+  } else {
+    renderPeerMessages([]);
+  }
+}
+
+function renderPeerMessages(msgs) {
+  const container = document.getElementById('peer-messages');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!msgs.length) {
+    container.innerHTML = `<div style="text-align:center;color:var(--text3);padding:2rem;font-size:.88rem">No messages yet. Say hello! 👋</div>`;
+    return;
+  }
+  msgs.forEach(m => {
+    const isMe = m.uid === STATE.uid;
+    const ts = m.ts?.toDate ? m.ts.toDate().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+    const div = document.createElement('div');
+    div.className = `chat-msg ${isMe ? 'me' : ''}`;
+    div.innerHTML = `
+      ${!isMe ? `<div class="peer-avatar" style="width:28px;height:28px;font-size:.7rem;flex-shrink:0">${(m.name||'?')[0]}</div>` : ''}
+      <div>
+        ${!isMe ? `<div class="chat-name">${escapeHtml(m.name||'')}</div>` : ''}
+        <div class="chat-bubble ${isMe?'me':'them'}">${escapeHtml(m.text||'')}</div>
+        <div class="chat-time">${ts}</div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendPeerMsg() {
+  const input = document.getElementById('peer-input');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const msg = {
+    uid: STATE.uid, name: STATE.profile.name||'Me',
+    text, ts: new Date(), pic_url: STATE.profile.pic_url||''
+  };
+  if (STATE.db && STATE.peerRoom) {
+    await STATE.db.collection('rooms').doc(STATE.peerRoom).collection('messages').add({
+      ...msg, ts: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } else {
+    // Demo: just append locally
+    const container = document.getElementById('peer-messages');
+    const prev = container.querySelector('[style*="No messages"]');
+    if (prev) prev.remove();
+    const div = document.createElement('div');
+    div.className = 'chat-msg me';
+    div.innerHTML = `<div><div class="chat-bubble me">${escapeHtml(text)}</div><div class="chat-time">now</div></div>`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+function backToPeerList() {
+  if (STATE.peerUnsub) { STATE.peerUnsub(); STATE.peerUnsub=null; }
+  STATE.peerRoom = null;
+  document.getElementById('peer-list-view').style.display = 'block';
+  document.getElementById('peer-chat-view').style.display = 'none';
+}
+
+async function reportUser() {
+  const reason = document.getElementById('report-reason').value.trim();
+  if (!reason) { alert('Please provide a reason for the report.'); return; }
+  if (STATE.db) {
+    await STATE.db.collection('reports').add({
+      reporter: STATE.uid, reported: STATE.peerUid,
+      reason, ts: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+  document.getElementById('report-reason').value = '';
+  alert('Report submitted. Our team will review it. Thank you.');
+}
+
+async function blockUser() {
+  if (!STATE.peerUid) return;
+  STATE.blockedUsers.push(STATE.peerUid);
+  if (STATE.db) {
+    await STATE.db.collection('blocks').doc(STATE.uid).set({ blocked: STATE.blockedUsers });
+  }
+  alert(`${STATE.peerName} has been blocked.`);
+  backToPeerList();
+  loadPeers();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TRANSLATOR
+// ══════════════════════════════════════════════════════════════════════════════
+let audioBlob = null;
+
+function handleAudioUpload(input) {
+  if (input.files[0]) audioBlob = input.files[0];
+}
+
+function swapLangs() {
+  const src = document.getElementById('tr-src');
+  const tgt = document.getElementById('tr-tgt');
+  const tmp = src.value;
+  src.value = tgt.value;
+  tgt.value = tmp;
+}
+
+async function doTranslate() {
+  const srcLang = document.getElementById('tr-src').value;
+  const tgtLang = document.getElementById('tr-tgt').value;
+  const textInput = document.getElementById('tr-text').value.trim();
+  const loading = document.getElementById('tr-loading');
+  const result  = document.getElementById('tr-result');
+  loading.style.display='flex'; result.style.display='none';
+
+  let sourceText = textInput;
+
+  // Whisper transcription if audio
+  if (audioBlob && !textInput) {
+    const key = STATE.cfg.openai;
+    if (!key) {
+      loading.style.display='none';
+      document.getElementById('tr-transcript').textContent='🔑 OpenAI API key required for audio transcription.';
+      result.style.display='block'; return;
+    }
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'audio.wav');
+    formData.append('model','whisper-1');
+    formData.append('language', srcLang);
+    try {
+      const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method:'POST', headers:{ 'Authorization':`Bearer ${key}` }, body: formData
+      });
+      const data = await res.json();
+      sourceText = data.text || data.error?.message || '';
+      document.getElementById('tr-transcript').textContent = sourceText;
+    } catch(e) {
+      loading.style.display='none';
+      document.getElementById('tr-transcript').textContent='Error: '+e.message;
+      result.style.display='block'; return;
+    }
+  } else {
+    document.getElementById('tr-transcript').textContent = sourceText || '(text input)';
+  }
+
+  if (!sourceText) { loading.style.display='none'; alert('Please provide audio or text to translate.'); return; }
+
+  // Translate via MyMemory (free, no key needed)
+  const translation = await translateText(sourceText, srcLang, tgtLang);
+  document.getElementById('tr-translation').textContent = translation;
+
+  // TTS
+  const audioEl = document.getElementById('tr-audio-player');
+  audioEl.innerHTML = '';
+  const ttsAudio = await textToSpeech(translation, tgtLang);
+  if (ttsAudio) audioEl.innerHTML = `<audio controls autoplay src="${ttsAudio}" style="width:100%;margin-top:.5rem"></audio>`;
+
+  loading.style.display='none'; result.style.display='block';
+}
+
+async function doLiveTranslate() {
+  const text  = document.getElementById('live-input').value.trim();
+  const tgt   = document.getElementById('tr-tgt').value;
+  const src   = document.getElementById('tr-src').value;
+  if (!text) return;
+  const translation = await translateText(text, src, tgt);
+  document.getElementById('live-translation').textContent = translation;
+  const liveAudio = document.getElementById('live-audio');
+  const ttsAudio  = await textToSpeech(translation, tgt);
+  if (ttsAudio) liveAudio.innerHTML = `<audio controls autoplay src="${ttsAudio}" style="width:100%;margin-top:.5rem"></audio>`;
+  document.getElementById('live-result').style.display='block';
+}
+
+async function translateText(text, srcLang, tgtLang) {
+  if (srcLang === tgtLang) return text;
+  // MyMemory free API
+  try {
+    const pair = `${srcLang}|${tgtLang}`;
+    const url  = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${pair}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    return data.responseData?.translatedText || text;
+  } catch(e) { return `[Translation error: ${e.message}]`; }
+}
+
+async function textToSpeech(text, lang) {
+  // Use browser SpeechSynthesis as fallback (no API key needed)
+  return new Promise(resolve => {
+    try {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      window.speechSynthesis.speak(utterance);
+      resolve(''); // no audio element needed for SpeechSynthesis
+    } catch(e) { resolve(''); }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HOTEL MAP
+// ══════════════════════════════════════════════════════════════════════════════
+const CITY_MAP = {
+  Egypt:['Cairo','Alexandria','Giza','Luxor'],
+  Germany:['Berlin','Munich','Hamburg','Frankfurt','Cologne'],
+  Turkey:['Istanbul','Ankara','Izmir','Antalya'],
+  Jordan:['Amman','Zarqa','Irbid','Aqaba'],
+  Lebanon:['Beirut','Tripoli','Sidon'],
+  France:['Paris','Lyon','Marseille','Nice'],
+  UK:['London','Manchester','Birmingham','Glasgow'],
+  Netherlands:['Amsterdam','Rotterdam','The Hague','Utrecht'],
+  Sweden:['Stockholm','Gothenburg','Malmö'],
+  Canada:['Toronto','Montreal','Vancouver','Ottawa'],
+  USA:['New York','Los Angeles','Chicago','Houston'],
+  Other:['Enter city manually below'],
+};
+function updateCities() {
+  const country = document.getElementById('hotel-country')?.value || 'Egypt';
+  const cityEl  = document.getElementById('hotel-city');
+  if (!cityEl) return;
+  const cities = CITY_MAP[country] || ['Enter city manually'];
+  cityEl.innerHTML = cities.map(c=>`<option>${c}</option>`).join('');
+}
+
+let leafletMap = null;
+async function searchHotels() {
+  const country    = document.getElementById('hotel-country').value;
+  const city       = document.getElementById('hotel-city-custom').value.trim() || document.getElementById('hotel-city').value;
+  const maxPrice   = parseInt(document.getElementById('hotel-price').value);
+  const familyOnly = document.getElementById('hotel-family').checked;
+  const loading    = document.getElementById('hotel-loading');
+  const mapEl      = document.getElementById('hotel-map');
+  const resultsEl  = document.getElementById('hotel-results');
+
+  loading.style.display='flex'; mapEl.style.display='none'; resultsEl.innerHTML='';
+
+  // Geocode city
+  const coords = await geocodeCity(city + ', ' + country);
+  const { lat, lon } = coords;
+
+  // Init/reset Leaflet map
+  mapEl.style.display='block';
+  if (leafletMap) { leafletMap.remove(); leafletMap=null; }
+  leafletMap = L.map('hotel-map').setView([lat, lon], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(leafletMap);
+  L.marker([lat,lon]).addTo(leafletMap).bindPopup(`📍 ${city}`).openPopup();
+
+  // Fetch hotels
+  const gmKey = STATE.cfg.gmaps;
+  let hotels = [];
+  if (gmKey) {
+    hotels = await fetchGoogleHotels(lat, lon, gmKey, maxPrice, familyOnly);
+  } else {
+    // Overpass API fallback (free, no key)
+    hotels = await fetchOverpassHotels(lat, lon, maxPrice);
+  }
+
+  // Add markers
+  hotels.forEach(h => {
+    const popup = `<b>${h.name}</b><br>⭐ ${h.rating||'N/A'}<br>
+      ${h.price ? `💲 ~$${h.price}/night<br>` : ''}
+      ${h.place_id ? `<a href="https://www.google.com/maps/place/?q=place_id:${h.place_id}" target="_blank">View on Google Maps</a>` : ''}`;
+    L.marker([h.lat, h.lng], {
+      icon: L.divIcon({ className:'', html:'<div style="background:#A7F3D0;border:2px solid #065F46;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px">🏨</div>', iconSize:[28,28], iconAnchor:[14,14] })
+    }).addTo(leafletMap).bindPopup(popup);
+  });
+
+  // Render list
+  loading.style.display='none';
+  if (!hotels.length) {
+    resultsEl.innerHTML = '<div class="alert alert-warn">No hotels found. Try a different city or check your Google Maps API key.</div>';
+    return;
+  }
+  resultsEl.innerHTML = `<div style="font-weight:700;margin:.8rem 0 .5rem">Found ${hotels.length} places near ${escapeHtml(city)}</div>` +
+    hotels.map(h => `
+      <div class="card-sm" style="display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="font-weight:700">🏨 ${escapeHtml(h.name||'Hotel')}</div>
+          <div style="font-size:.82rem;color:var(--text2)">⭐ ${h.rating||'N/A'} ${h.price?`· ~$${h.price}/night`:''}</div>
+        </div>
+        ${h.place_id ? `<a class="btn btn-outline btn-sm" href="https://www.google.com/maps/place/?q=place_id:${h.place_id}" target="_blank">View Map</a>` : ''}
+      </div>
+    `).join('');
+}
+
+async function geocodeCity(query) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+    const res = await fetch(url, { headers:{ 'User-Agent':'RefugeeWellbeingHub/1.0' }});
+    const data = await res.json();
+    if (data.length) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+  } catch(e) {}
+  return { lat: 30.0444, lon: 31.2357 }; // default Cairo
+}
+
+async function fetchGoogleHotels(lat, lon, key, maxPrice, familyOnly) {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lon}&radius=5000&type=lodging&key=${key}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    let places = data.results || [];
+    return places
+      .filter(p => {
+        const price = [0,30,60,120,200][(p.price_level||2)];
+        const ok = price <= maxPrice;
+        const famOk = !familyOnly || p.name.toLowerCase().includes('family') || p.types?.includes('lodging');
+        return ok && famOk;
+      })
+      .slice(0,15)
+      .map(p => ({
+        name: p.name,
+        rating: p.rating,
+        price: [0,30,60,120,200][(p.price_level||2)],
+        lat: p.geometry.location.lat,
+        lng: p.geometry.location.lng,
+        place_id: p.place_id,
+      }));
+  } catch(e) { return []; }
+}
+
+async function fetchOverpassHotels(lat, lon, maxPrice) {
+  try {
+    const delta = 0.05;
+    const bbox  = `${lat-delta},${lon-delta},${lat+delta},${lon+delta}`;
+    const query = `[out:json];node["tourism"~"hotel|hostel|motel|guest_house"](${bbox});out body 20;`;
+    const res   = await fetch('https://overpass-api.de/api/interpreter', {
+      method:'POST', body: 'data=' + encodeURIComponent(query)
+    });
+    const data  = await res.json();
+    return (data.elements||[]).slice(0,15).map(e => ({
+      name: e.tags?.name || e.tags?.tourism || 'Lodging',
+      rating: e.tags?.stars || null,
+      price: null,
+      lat: e.lat, lng: e.lon,
+      place_id: null,
+    }));
+  } catch(e) { return []; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+function navTo(tab, el) {
+  // Update content panels
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+tab)?.classList.add('active');
+  // Update topbar tabs
+  document.querySelectorAll('#tab-bar .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+  // Update sidebar links
+  document.querySelectorAll('.sb-link').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+  // Close mobile sidebar
+  document.getElementById('sidebar').classList.remove('open');
+  // Lazy load
+  if (tab==='chat') loadPeers();
+  if (tab==='hotels') updateCities();
+  if (tab==='mental') { renderMoodChart(); renderSahaHistory(); }
+}
+
+function showCopingTab(tab, btn) {
+  document.querySelectorAll('#tab-mental .coping-tab').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  ['mood','ptsd','saha','coping'].forEach(t => {
+    const el = document.getElementById('coping-'+t);
+    if(el) el.classList.toggle('active', t===tab);
+  });
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+function setLang(code) {
+  const rtlLangs = ['ar','fa','he','ur'];
+  document.documentElement.dir = rtlLangs.includes(code) ? 'rtl' : 'ltr';
+  document.documentElement.lang = code;
+}
+
+function loadDarkMode() {
+  const dark = localStorage.getItem('rwh_dark') === 'true';
+  document.getElementById('dark-toggle').checked = dark;
+  document.documentElement.setAttribute('data-dark', dark);
+}
+
+function toggleDark(enabled) {
+  document.documentElement.setAttribute('data-dark', enabled);
+  localStorage.setItem('rwh_dark', enabled);
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getVal(id) { return document.getElementById(id)?.value || ''; }
+
+function setVal(id, v) { const el = document.getElementById(id); if(el) el.value = v; }
+</script>
+
+</body>
+</html>
